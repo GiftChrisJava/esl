@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "WebFetch(domain:developer.paychangu.com)",
+      "Bash(npm install:*)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(npm run build:*)",
+      "Bash(npm run lint)",
+      "Bash(npx supabase:*)",
+      "Bash(supabase:*)",
+      "Bash(sed:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npm run dev:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(npx tsc:*)",
+      "Bash(touch:*)",
+      "Bash(npx next build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
