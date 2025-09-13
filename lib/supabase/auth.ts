@@ -93,28 +93,54 @@ export class AuthService {
 
   async signUp(data: SignUpData) {
     try {
-      // For customers, create unconfirmed user and send verification code
+      // Create user with email confirmation disabled
       const { data: authData, error: authError } = await this.supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: undefined, // Disable email confirmation link
+          emailRedirectTo: undefined,
           data: {
             full_name: data.fullName,
             phone_number: data.phoneNumber,
             district: data.district,
             area: data.area,
             landmarks: data.landmarks,
+            role: 'customer',
           }
         }
       })
 
       if (authError) {
+        console.error('Supabase auth error:', authError)
         return { success: false, error: authError.message }
       }
 
       if (!authData.user) {
         return { success: false, error: 'Failed to create user' }
+      }
+
+      // Wait a moment for the profile to be created by the trigger
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Ensure profile exists and has correct data
+      const { error: profileError } = await this.supabase
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          email: data.email,
+          full_name: data.fullName,
+          phone_number: data.phoneNumber,
+          district: data.district,
+          area: data.area,
+          landmarks: data.landmarks,
+          role: 'customer',
+          email_verified: false,
+          is_active: true
+        })
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError)
+        return { success: false, error: 'Failed to create user profile' }
       }
 
       // Generate and send verification code
@@ -272,13 +298,6 @@ Energy Solutions Limited Team
 
   async signIn(data: SignInData) {
     try {
-      // Check if user exists and is verified for customers
-      const { data: profile } = await this.supabase
-        .from('profiles')
-        .select('role, email_verified')
-        .eq('email', data.email)
-        .single()
-
       const { data: authData, error } = await this.supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -287,6 +306,13 @@ Energy Solutions Limited Team
       if (error) {
         return { success: false, error: error.message }
       }
+
+      // Get user profile to check role and verification status
+      const { data: profile } = await this.supabase
+        .from('profiles')
+        .select('role, email_verified')
+        .eq('id', authData.user.id)
+        .single()
 
       // For customers, check email verification
       if (profile?.role === 'customer' && !profile?.email_verified) {

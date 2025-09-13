@@ -432,9 +432,11 @@ const AuthModal: React.FC<AuthModalProps> = ({
           onClose()
         }
       } else {
-        setSubmitError(result.error || 'An error occurred')
+        console.error('Auth error:', result.error)
+        setSubmitError(result.error || 'Registration failed. Please try again.')
       }
     } catch (error) {
+      console.error('Unexpected auth error:', error)
       setSubmitError('An unexpected error occurred. Please try again.')
     } finally {
       setIsSubmitting(false)
