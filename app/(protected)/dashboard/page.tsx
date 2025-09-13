@@ -48,10 +48,13 @@ const DashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (user && user.email_verified) {
       loadUserData();
+    } else if (user && !user.email_verified) {
+      // Redirect unverified users
+      router.push("/products");
     }
-  }, [user]);
+  }, [user, router]);
 
   useEffect(() => {
     let filtered = orders;

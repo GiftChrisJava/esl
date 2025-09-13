@@ -8,8 +8,11 @@ interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
   signUp: (data: SignUpData) => Promise<{ success: boolean; error?: string; needsVerification?: boolean }>
+  createAdminUser: (data: SignUpData & { role: UserRole }) => Promise<{ success: boolean; error?: string; message?: string }>
   signIn: (data: SignInData) => Promise<{ success: boolean; error?: string }>
   signOut: () => Promise<{ success: boolean; error?: string }>
+  verifyEmail: (email: string, code: string) => Promise<{ success: boolean; error?: string; message?: string }>
+  resendVerificationCode: (email: string) => Promise<{ success: boolean; error?: string; message?: string }>
   updateProfile: (updates: Partial<AuthUser>) => Promise<{ success: boolean; error?: string }>
 }
 
@@ -54,11 +57,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true)
     const result = await authService.signUp(data)
     
-    if (result.success && result.user) {
+    // Don't auto-login for customers who need verification
+    if (result.success && result.user && !result.needsVerification) {
       const user = await authService.getCurrentUser()
       setUser(user)
     }
     
+    setIsLoading(false)
+    return result
+  }
+
+  const createAdminUser = async (data: SignUpData & { role: UserRole }) => {
+    setIsLoading(true)
+    const result = await authService.createAdminUser(data)
     setIsLoading(false)
     return result
   }
@@ -88,6 +99,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return result
   }
 
+  const verifyEmail = async (email: string, code: string) => {
+    return await authService.verifyEmailCode(email, code)
+  }
+
+  const resendVerificationCode = async (email: string) => {
+    return await authService.resendVerificationCode(email)
+  }
+
   const updateProfile = async (updates: Partial<AuthUser>) => {
     const result = await authService.updateProfile(updates)
     
@@ -103,8 +122,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: !!user,
     isLoading,
     signUp,
+    createAdminUser,
     signIn,
     signOut,
+    verifyEmail,
+    resendVerificationCode,
     updateProfile,
   }
 

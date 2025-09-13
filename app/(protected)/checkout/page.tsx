@@ -66,10 +66,15 @@ const CheckoutPage: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Partial<ShippingAddress>>({});
 
   useEffect(() => {
+    if (!user?.email_verified) {
+      router.push("/products");
+      return;
+    }
+    
     if (items.length === 0) {
       router.push("/products");
     }
-  }, [items.length, router]);
+  }, [items.length, router, user?.email_verified]);
 
   useEffect(() => {
     if (user) {

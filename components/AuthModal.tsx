@@ -3,8 +3,8 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Eye, EyeOff, Loader2, Lock, Mail, MapPin, Phone, User, X } from 'lucide-react'
-import React, { useState } from 'react'
+import { AlertCircle, CheckCircle, Eye, EyeOff, Loader2, Lock, Mail, MapPin, Phone, RefreshCw, User, X } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
 
 // Malawi districts for the dropdown
 const MALAWI_DISTRICTS = [
@@ -23,6 +23,13 @@ interface AuthModalProps {
   onSuccess?: () => void
 }
 
+interface VerificationModalProps {
+  isOpen: boolean
+  onClose: () => void
+  email: string
+  onVerified: () => void
+}
+
 interface FormData {
   email: string
   password: string
@@ -31,6 +38,283 @@ interface FormData {
   district: string
   area: string
   landmarks: string
+}
+
+// Email Verification Modal Component
+const EmailVerificationModal: React.FC<VerificationModalProps> = ({
+  isOpen,
+  onClose,
+  email,
+  onVerified
+}) => {
+  const { verifyEmail, resendVerificationCode } = useAuth()
+  const [code, setCode] = useState(['', '', '', '', '', ''])
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isResending, setIsResending] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [canResend, setCanResend] = useState(true)
+  const [resendTimer, setResendTimer] = useState(0)
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  // Handle timer for resend cooldown
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => {
+        setResendTimer(resendTimer - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
+    } else {
+      setCanResend(true)
+    }
+  }, [resendTimer])
+
+  // Focus first input on mount
+  useEffect(() => {
+    if (isOpen) {
+      inputRefs.current[0]?.focus()
+    }
+  }, [isOpen])
+
+  const handleInputChange = (index: number, value: string) => {
+    if (value.length > 1) return // Prevent multiple characters
+
+    const newCode = [...code]
+    newCode[index] = value
+    setCode(newCode)
+    setError('')
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus()
+    }
+
+    // Auto-submit when all fields are filled
+    if (newCode.every((digit) => digit !== '') && value) {
+      handleVerify(newCode.join(''))
+    }
+  }
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus()
+    }
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault()
+    const pastedData = e.clipboardData
+      .getData('text')
+      .replace(/\D/g, '')
+      .slice(0, 6)
+
+    if (pastedData.length === 6) {
+      const newCode = pastedData.split('')
+      setCode(newCode)
+      handleVerify(pastedData)
+    }
+  }
+
+  const handleVerify = async (verificationCode: string) => {
+    setIsVerifying(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const result = await verifyEmail(email, verificationCode)
+
+      if (result.success) {
+        setSuccess(result.message || 'Email verified successfully!')
+        setTimeout(() => {
+          onVerified()
+          onClose()
+        }, 1500)
+      } else {
+        setError(result.error || 'Verification failed')
+        // Reset code on error
+        setCode(['', '', '', '', '', ''])
+        inputRefs.current[0]?.focus()
+      }
+    } catch (error) {
+      setError('Verification failed. Please try again.')
+      setCode(['', '', '', '', '', ''])
+      inputRefs.current[0]?.focus()
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const handleResend = async () => {
+    if (!canResend || isResending) return
+
+    setIsResending(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const result = await resendVerificationCode(email)
+
+      if (result.success) {
+        setSuccess(result.message || 'New verification code sent!')
+        setCanResend(false)
+        setResendTimer(60) // 60 second cooldown
+      } else {
+        setError(result.error || 'Failed to resend code')
+      }
+    } catch (error) {
+      setError('Failed to resend code. Please try again.')
+    } finally {
+      setIsResending(false)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <motion.div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="text-center flex-1">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Verify Your Email
+            </h2>
+            <p className="text-gray-600 text-sm">
+              We've sent a 6-digit code to{' '}
+              <span className="font-semibold text-gray-900">{email}</span>
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Verification Form */}
+        <div className="p-6">
+          {/* Status Messages */}
+          {error && (
+            <motion.div
+              className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+              {error}
+            </motion.div>
+          )}
+
+          {success && (
+            <motion.div
+              className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm flex items-center"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+              {success}
+            </motion.div>
+          )}
+
+          {/* Code Input */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
+              Enter 6-digit verification code
+            </label>
+            <div className="flex justify-center space-x-3" onPaste={handlePaste}>
+              {code.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => {
+                    inputRefs.current[index] = el
+                  }}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleInputChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  className={cn(
+                    "w-12 h-12 text-center text-lg font-semibold border-2 rounded-lg transition-colors",
+                    error
+                      ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+                      : success
+                      ? "border-green-300 focus:border-green-500 focus:ring-green-200"
+                      : "border-gray-300 focus:border-green-500 focus:ring-green-200",
+                    "focus:outline-none focus:ring-2"
+                  )}
+                  disabled={isVerifying}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-4">
+            {/* Manual Verify Button */}
+            {code.every((digit) => digit !== '') && !isVerifying && (
+              <button
+                onClick={() => handleVerify(code.join(''))}
+                className="w-full py-3 px-4 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors"
+              >
+                Verify Email
+              </button>
+            )}
+
+            {/* Resend Code */}
+            <div className="text-center">
+              <p className="text-gray-600 text-sm mb-2">
+                Didn't receive the code?
+              </p>
+              <button
+                onClick={handleResend}
+                disabled={!canResend || isResending}
+                className={cn(
+                  "inline-flex items-center space-x-2 text-sm font-medium transition-colors",
+                  canResend && !isResending
+                    ? "text-green-600 hover:text-green-700"
+                    : "text-gray-400 cursor-not-allowed"
+                )}
+              >
+                <RefreshCw className={cn("w-4 h-4", isResending && "animate-spin")} />
+                <span>
+                  {isResending
+                    ? 'Sending...'
+                    : !canResend
+                    ? `Resend code in ${resendTimer}s`
+                    : 'Resend code'}
+                </span>
+              </button>
+            </div>
+
+            {/* Help Text */}
+            <div className="text-center">
+              <p className="text-xs text-gray-500">
+                Check your spam folder if you don't see the email.
+                <br />
+                The verification code expires in 10 minutes.
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ 
@@ -42,6 +326,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const { signIn, signUp, isLoading } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
+  const [showVerification, setShowVerification] = useState(false)
+  const [pendingEmail, setPendingEmail] = useState('')
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
@@ -136,8 +422,15 @@ const AuthModal: React.FC<AuthModalProps> = ({
 
       if (result.success) {
         handleReset()
-        onSuccess?.()
-        onClose()
+        
+        if (result.needsVerification) {
+          // Show verification modal
+          setPendingEmail(formData.email)
+          setShowVerification(true)
+        } else {
+          onSuccess?.()
+          onClose()
+        }
       } else {
         setSubmitError(result.error || 'An error occurred')
       }
@@ -162,12 +455,34 @@ const AuthModal: React.FC<AuthModalProps> = ({
     setSubmitError('')
   }
 
+  const handleVerificationSuccess = () => {
+    setShowVerification(false)
+    setPendingEmail('')
+    handleReset()
+    onSuccess?.()
+    onClose()
+  }
+
   const handleClose = () => {
     handleReset()
+    setShowVerification(false)
+    setPendingEmail('')
     onClose()
   }
 
   if (!isOpen) return null
+
+  // Show verification modal if needed
+  if (showVerification && pendingEmail) {
+    return (
+      <EmailVerificationModal
+        isOpen={showVerification}
+        onClose={() => setShowVerification(false)}
+        email={pendingEmail}
+        onVerified={handleVerificationSuccess}
+      />
+    )
+  }
 
   return (
     <AnimatePresence>

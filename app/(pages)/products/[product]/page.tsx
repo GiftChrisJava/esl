@@ -100,11 +100,12 @@ const ProductDetailPage = ({
     setPendingAction(null);
   }, [pendingAction, addToCart, product, quantity, isInCart, router]);
 
+  // Only proceed with pending action if user is authenticated AND email is verified
   useEffect(() => {
-    if (isAuthenticated && pendingAction) {
+    if (isAuthenticated && user?.email_verified && pendingAction) {
       handleAuthSuccess();
     }
-  }, [isAuthenticated, pendingAction, handleAuthSuccess]);
+  }, [isAuthenticated, user?.email_verified, pendingAction, handleAuthSuccess]);
 
   if (loading) {
     return (
@@ -139,7 +140,7 @@ const ProductDetailPage = ({
   const isProductInCart = isInCart(product.id);
 
   const handleBuyNow = () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user?.email_verified) {
       setPendingAction("buy");
       setAuthMode("login");
       setShowAuthModal(true);
@@ -157,7 +158,7 @@ const ProductDetailPage = ({
   };
 
   const handleAddToCart = () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user?.email_verified) {
       setPendingAction("cart");
       setAuthMode("login");
       setShowAuthModal(true);
