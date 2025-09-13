@@ -47,15 +47,15 @@ export const COMPANY_INFO = {
 
 export const FEATURE_FLAGS = {
   // E-commerce features
-  ecommerceEnabled: false, // Disabled for now as requested
-  onlinePayments: false,
-  cartEnabled: false,
-  checkoutEnabled: false,
+  ecommerceEnabled: true, // Now enabled with Supabase
+  onlinePayments: true,
+  cartEnabled: true,
+  checkoutEnabled: true,
 
   // Authentication features
-  authEnabled: false, // Disabled as requested
-  userRegistration: false,
-  userProfiles: false,
+  authEnabled: true, // Now enabled with Supabase
+  userRegistration: true,
+  userProfiles: true,
 
   // Content features
   blogEnabled: true,
@@ -69,7 +69,7 @@ export const FEATURE_FLAGS = {
 
   // Admin features
   adminPanelEnabled: true,
-  userManagement: false, // Disabled for now
+  userManagement: true, // Now enabled
   contentManagement: true,
 
   // Third-party integrations

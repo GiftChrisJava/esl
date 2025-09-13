@@ -1,124 +1,172 @@
-// "use client";
+"use client";
 
-// import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-// import type { Product, CartItem, Cart } from '@/lib/types';
-// import { SecureStorage, calculateCartTotal, getCartItemCount } from '@/lib/utils';
-// import { APP_CONFIG } from '@/lib/config';
+import { cartService, type CartItemWithProduct } from '@/lib/supabase/cart'
+import { useAuth } from './AuthContext'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 
-// interface CartContextType {
-//   cart: Cart;
-//   addToCart: (productId: number, quantity?: number) => void;
-//   removeFromCart: (productId: number) => void;
-//   updateQuantity: (productId: number, quantity: number) => void;
-//   clearCart: () => void;
-//   isInCart: (productId: number) => boolean;
-//   getCartItem: (productId: number) => CartItem | undefined;
-// }
+interface CartContextType {
+  items: CartItemWithProduct[]
+  totalItems: number
+  totalAmount: number
+  isLoading: boolean
+  addToCart: (productId: string, quantity?: number) => Promise<{ success: boolean; error?: string }>
+  updateQuantity: (productId: string, quantity: number) => Promise<{ success: boolean; error?: string }>
+  removeFromCart: (productId: string) => Promise<{ success: boolean; error?: string }>
+  clearCart: () => Promise<{ success: boolean; error?: string }>
+  refreshCart: () => Promise<void>
+  isInCart: (productId: string) => boolean
+  getCartItem: (productId: string) => CartItemWithProduct | undefined
+}
 
-// const CartContext = createContext<CartContextType | undefined>(undefined);
+const CartContext = createContext<CartContextType | undefined>(undefined)
 
-// export const useCart = (): CartContextType => {
-//   const context = useContext(CartContext);
-//   if (!context) {
-//     throw new Error('useCart must be used within a CartProvider');
-//   }
-//   return context;
-// };
+export const useCart = (): CartContextType => {
+  const context = useContext(CartContext)
+  if (!context) {
+    throw new Error('useCart must be used within a CartProvider')
+  }
+  return context
+}
 
-// interface CartProviderProps {
-//   children: ReactNode;
-//   products: Product[]; // We need products to calculate totals
-// }
+interface CartProviderProps {
+  children: React.ReactNode
+}
 
-// export const CartProvider: React.FC<CartProviderProps> = ({ children, products }) => {
-//   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth()
+  const [items, setItems] = useState<CartItemWithProduct[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
-//   // Initialize cart from local storage
-//   useEffect(() => {
-//     const storedCart = SecureStorage.getItem<CartItem[]>(APP_CONFIG.storage.cart);
-//     if (storedCart) {
-//       setCartItems(storedCart);
-//     }
-//   }, []);
+  // Calculate totals
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
+  const totalAmount = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
 
-//   // Save cart to local storage whenever it changes
-//   useEffect(() => {
-//     SecureStorage.setItem(APP_CONFIG.storage.cart, cartItems);
-//   }, [cartItems]);
+  // Load cart when user changes
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      refreshCart()
+    } else {
+      setItems([])
+    }
+  }, [isAuthenticated, user])
 
-//   // Calculate cart totals
-//   const cart: Cart = {
-//     items: cartItems,
-//     totalItems: getCartItemCount(cartItems),
-//     totalAmount: calculateCartTotal(cartItems, products),
-//   };
+  const refreshCart = async () => {
+    if (!user) return
 
-//   const addToCart = (productId: number, quantity: number = 1) => {
-//     setCartItems(prevItems => {
-//       const existingItem = prevItems.find(item => item.productId === productId);
+    setIsLoading(true)
+    try {
+      const result = await cartService.getCartItems(user.id)
+      if (result.success) {
+        setItems(result.data)
+      }
+    } catch (error) {
+      console.error('Error refreshing cart:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-//       if (existingItem) {
-//         // Update existing item quantity
-//         return prevItems.map(item =>
-//           item.productId === productId
-//             ? { ...item, quantity: item.quantity + quantity }
-//             : item
-//         );
-//       } else {
-//         // Add new item
-//         return [...prevItems, { productId, quantity }];
-//       }
-//     });
-//   };
+  const addToCart = async (productId: string, quantity: number = 1) => {
+    if (!user) {
+      return { success: false, error: 'Please sign in to add items to cart' }
+    }
 
-//   const removeFromCart = (productId: number) => {
-//     setCartItems(prevItems => prevItems.filter(item => item.productId !== productId));
-//   };
+    setIsLoading(true)
+    try {
+      const result = await cartService.addToCart(user.id, productId, quantity)
+      if (result.success) {
+        await refreshCart()
+      }
+      return result
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+      return { success: false, error: 'Failed to add item to cart' }
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-//   const updateQuantity = (productId: number, quantity: number) => {
-//     if (quantity <= 0) {
-//       removeFromCart(productId);
-//       return;
-//     }
+  const updateQuantity = async (productId: string, quantity: number) => {
+    if (!user) {
+      return { success: false, error: 'Please sign in to update cart' }
+    }
 
-//     if (quantity > APP_CONFIG.ui.maxCartItems) {
-//       quantity = APP_CONFIG.ui.maxCartItems;
-//     }
+    setIsLoading(true)
+    try {
+      const result = await cartService.updateCartItem(user.id, productId, quantity)
+      if (result.success) {
+        await refreshCart()
+      }
+      return result
+    } catch (error) {
+      console.error('Error updating cart item:', error)
+      return { success: false, error: 'Failed to update cart item' }
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-//     setCartItems(prevItems =>
-//       prevItems.map(item =>
-//         item.productId === productId
-//           ? { ...item, quantity }
-//           : item
-//       )
-//     );
-//   };
+  const removeFromCart = async (productId: string) => {
+    if (!user) {
+      return { success: false, error: 'Please sign in to remove items from cart' }
+    }
 
-//   const clearCart = () => {
-//     setCartItems([]);
-//   };
+    setIsLoading(true)
+    try {
+      const result = await cartService.removeFromCart(user.id, productId)
+      if (result.success) {
+        await refreshCart()
+      }
+      return result
+    } catch (error) {
+      console.error('Error removing from cart:', error)
+      return { success: false, error: 'Failed to remove item from cart' }
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-//   const isInCart = (productId: number) => {
-//     return cartItems.some(item => item.productId === productId);
-//   };
+  const clearCart = async () => {
+    if (!user) {
+      return { success: false, error: 'Please sign in to clear cart' }
+    }
 
-//   const getCartItem = (productId: number) => {
-//     return cartItems.find(item => item.productId === productId);
-//   };
+    setIsLoading(true)
+    try {
+      const result = await cartService.clearCart(user.id)
+      if (result.success) {
+        setItems([])
+      }
+      return result
+    } catch (error) {
+      console.error('Error clearing cart:', error)
+      return { success: false, error: 'Failed to clear cart' }
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-//   const contextValue: CartContextType = {
-//     cart,
-//     addToCart,
-//     removeFromCart,
-//     updateQuantity,
-//     clearCart,
-//     isInCart,
-//     getCartItem,
-//   };
+  const isInCart = (productId: string) => {
+    return items.some(item => item.product_id === productId)
+  }
 
-//   return (
-//     <CartContext.Provider value={contextValue}>
-//       {children}
-//     </CartContext.Provider>
-//   );
-// };
+  const getCartItem = (productId: string) => {
+    return items.find(item => item.product_id === productId)
+  }
+
+  const value: CartContextType = {
+    items,
+    totalItems,
+    totalAmount,
+    isLoading,
+    addToCart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    refreshCart,
+    isInCart,
+    getCartItem,
+  }
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
+}
