@@ -75,9 +75,12 @@ The project includes pre-built migration files. Run them in this order:
 3. Add **Redirect URLs**:
    - `http://localhost:3000/**`
    - `https://yourdomain.com/**` (for production)
-4. **Enable email confirmation** - this is required for the 6-digit verification system
+4. **DISABLE email confirmation** - we use custom 6-digit verification for customers
 5. Enable **Email** authentication
-6. **Important**: The system uses custom 6-digit verification codes for customers
+6. **Important**: 
+   - Customers use custom 6-digit verification codes
+   - Admin users are auto-verified (no email confirmation needed)
+   - Set "Enable email confirmations" to OFF in Auth settings
 
 ## Step 6: Create Your First Admin User
 
