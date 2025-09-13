@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import AuthModal from "@/components/AuthModal";
@@ -5,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { COMPANY_INFO } from "@/lib/config";
 import { productsService } from "@/lib/supabase/products";
-import type { Product as ProductType } from "@/lib/types";
 import { cn, formatPrice } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
@@ -30,11 +30,33 @@ import { use, useCallback, useEffect, useState } from "react";
 
 // Malawi districts for the dropdown
 const MALAWI_DISTRICTS = [
-  'Balaka', 'Blantyre', 'Chikwawa', 'Chiradzulu', 'Chitipa', 'Dedza',
-  'Dowa', 'Karonga', 'Kasungu', 'Likoma', 'Lilongwe', 'Machinga',
-  'Mangochi', 'Mchinji', 'Mwanza', 'Mzimba', 'Neno', 'Nkhata Bay',
-  'Nkhotakota', 'Nsanje', 'Ntcheu', 'Ntchisi', 'Phalombe', 'Rumphi',
-  'Salima', 'Thyolo', 'Zomba'
+  "Balaka",
+  "Blantyre",
+  "Chikwawa",
+  "Chiradzulu",
+  "Chitipa",
+  "Dedza",
+  "Dowa",
+  "Karonga",
+  "Kasungu",
+  "Likoma",
+  "Lilongwe",
+  "Machinga",
+  "Mangochi",
+  "Mchinji",
+  "Mwanza",
+  "Mzimba",
+  "Neno",
+  "Nkhata Bay",
+  "Nkhotakota",
+  "Nsanje",
+  "Ntcheu",
+  "Ntchisi",
+  "Phalombe",
+  "Rumphi",
+  "Salima",
+  "Thyolo",
+  "Zomba",
 ];
 
 const ProductDetailPage = ({
@@ -54,7 +76,9 @@ const ProductDetailPage = ({
   const [quantity, setQuantity] = useState(1);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("register");
-  const [pendingAction, setPendingAction] = useState<"buy" | "cart" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"buy" | "cart" | null>(
+    null
+  );
 
   // Inquiry form state (for non-e-commerce inquiries)
   const [inquiryForm, setInquiryForm] = useState({
@@ -69,13 +93,15 @@ const ProductDetailPage = ({
   useEffect(() => {
     const loadProduct = async () => {
       setLoading(true);
-      const result = await productsService.getProductBySlug(resolvedParams.product);
+      const result = await productsService.getProductBySlug(
+        resolvedParams.product
+      );
       if (result.success && result.data) {
         setProduct(result.data);
       }
       setLoading(false);
     };
-    
+
     loadProduct();
   }, [resolvedParams.product]);
 
@@ -240,7 +266,11 @@ Best regards`;
               {/* Main Image */}
               <div className="relative h-96 lg:h-[500px] rounded-2xl overflow-hidden bg-white shadow-lg">
                 <Image
-                  src={product.images?.[selectedImage] || product.image_url || "/image 1.jpg"}
+                  src={
+                    product.images?.[selectedImage] ||
+                    product.image_url ||
+                    "/image 1.jpg"
+                  }
                   alt={product.name}
                   fill
                   className="object-cover"
@@ -260,25 +290,27 @@ Best regards`;
 
               {/* Thumbnail Images */}
               <div className="grid grid-cols-3 gap-4">
-                {(product.images || [product.image_url || "/image 1.jpg"]).map((image: string, index: number) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={cn(
-                      "relative h-24 rounded-xl overflow-hidden transition-all",
-                      selectedImage === index
-                        ? "ring-2 ring-green-600"
-                        : "hover:ring-2 hover:ring-gray-300"
-                    )}
-                  >
-                    <Image
-                      src={image}
-                      alt={`${product.name} view ${index + 1}`}
-                      fill
-                      className="object-cover"
-                    />
-                  </button>
-                ))}
+                {(product.images || [product.image_url || "/image 1.jpg"]).map(
+                  (image: string, index: number) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImage(index)}
+                      className={cn(
+                        "relative h-24 rounded-xl overflow-hidden transition-all",
+                        selectedImage === index
+                          ? "ring-2 ring-green-600"
+                          : "hover:ring-2 hover:ring-gray-300"
+                      )}
+                    >
+                      <Image
+                        src={image}
+                        alt={`${product.name} view ${index + 1}`}
+                        fill
+                        className="object-cover"
+                      />
+                    </button>
+                  )
+                )}
               </div>
             </div>
 
@@ -286,7 +318,7 @@ Best regards`;
             <div className="space-y-6">
               <div>
                 <p className="text-blue-800 font-medium mb-2">
-                  {product.category?.name || 'Product'}
+                  {product.category?.name || "Product"}
                 </p>
                 <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
                   {product.name}
@@ -394,15 +426,25 @@ Best regards`;
                   <div className="space-y-3">
                     <motion.button
                       onClick={handleBuyNow}
-                      disabled={!product.stock_quantity || product.stock_quantity <= 0}
+                      disabled={
+                        !product.stock_quantity || product.stock_quantity <= 0
+                      }
                       className={cn(
                         "w-full flex items-center justify-center space-x-2 px-6 py-4 rounded-xl font-semibold text-lg transition-colors",
                         product.stock_quantity && product.stock_quantity > 0
                           ? "bg-green-800 text-white hover:bg-green-700"
                           : "bg-gray-300 text-gray-500 cursor-not-allowed"
                       )}
-                      whileHover={product.stock_quantity && product.stock_quantity > 0 ? { scale: 1.02 } : {}}
-                      whileTap={product.stock_quantity && product.stock_quantity > 0 ? { scale: 0.98 } : {}}
+                      whileHover={
+                        product.stock_quantity && product.stock_quantity > 0
+                          ? { scale: 1.02 }
+                          : {}
+                      }
+                      whileTap={
+                        product.stock_quantity && product.stock_quantity > 0
+                          ? { scale: 0.98 }
+                          : {}
+                      }
                     >
                       <CreditCard className="w-5 h-5" />
                       <span>Buy Now</span>
@@ -410,7 +452,9 @@ Best regards`;
 
                     <button
                       onClick={handleAddToCart}
-                      disabled={!product.stock_quantity || product.stock_quantity <= 0}
+                      disabled={
+                        !product.stock_quantity || product.stock_quantity <= 0
+                      }
                       className={cn(
                         "w-full flex items-center justify-center space-x-2 px-6 py-3 border-2 rounded-xl font-semibold transition-colors",
                         product.stock_quantity && product.stock_quantity > 0
@@ -457,7 +501,9 @@ Best regards`;
                       Installation
                     </p>
                     <p className="text-xs text-gray-600">
-                      {product.installation_available ? "Available" : "Not Required"}
+                      {product.installation_available
+                        ? "Available"
+                        : "Not Required"}
                     </p>
                   </div>
                 </div>
@@ -545,15 +591,17 @@ Best regards`;
                       Key Features
                     </h4>
                     <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {(product.features || []).map((feature: string, index: number) => (
-                        <li
-                          key={index}
-                          className="flex items-center text-gray-700"
-                        >
-                          <span className="w-2 h-2 bg-green-600 rounded-full mr-3"></span>
-                          {feature}
-                        </li>
-                      ))}
+                      {(product.features || []).map(
+                        (feature: string, index: number) => (
+                          <li
+                            key={index}
+                            className="flex items-center text-gray-700"
+                          >
+                            <span className="w-2 h-2 bg-green-600 rounded-full mr-3"></span>
+                            {feature}
+                          </li>
+                        )
+                      )}
                     </ul>
                   </div>
                 </div>
