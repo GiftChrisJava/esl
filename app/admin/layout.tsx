@@ -53,7 +53,14 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    if (!isLoading && (!user || user.role === 'customer' || !user.email_verified)) {
+    if (!isLoading && (!user || user.role === 'customer')) {
+      router.push('/');
+      return;
+    }
+
+    // For admin users, email verification is not required (they're auto-verified)
+    // Only redirect if user is not an admin
+    if (!isLoading && user && user.role === 'customer') {
       router.push('/');
       return;
     }
@@ -89,10 +96,7 @@ export default function AdminLayout({
             Access Denied
           </h2>
           <p className="text-gray-600 mb-6">
-            {!user?.email_verified 
-              ? "Please verify your email to access admin features"
-              : "You don't have permission to access the admin panel"
-            }
+            You don't have permission to access the admin panel
           </p>
           <Link
             href="/"
