@@ -16,21 +16,21 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Format price with currency symbol
  */
-export function formatPrice(price: number, currency: string = "KES"): string {
+export function formatPrice(price: number, currency: string = "MWK"): string {
   try {
     if (isNaN(price) || price < 0) {
       return `${currency} 0.00`;
     }
 
-    return new Intl.NumberFormat("en-KE", {
+    return new Intl.NumberFormat("en-MW", {
       style: "currency",
       currency: currency,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(price);
+    }).format(price).replace("MWK", "MK");
   } catch {
     // Fallback formatting if Intl.NumberFormat fails
-    return `${currency} ${price
+    return `MK ${price
       .toFixed(2)
       .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
   }
@@ -41,7 +41,7 @@ export function formatPrice(price: number, currency: string = "KES"): string {
  */
 export function formatNumber(num: number): string {
   try {
-    return new Intl.NumberFormat("en-KE").format(num);
+    return new Intl.NumberFormat("en-MW").format(num);
   } catch {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   }
@@ -118,26 +118,26 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * Check if phone number is valid (Kenya format)
+ * Check if phone number is valid (Malawi format)
  */
 export function isValidPhone(phone: string): boolean {
-  // Kenya phone number formats: +254XXXXXXXXX, 254XXXXXXXXX, 07XXXXXXXX, 01XXXXXXXX
-  const phoneRegex = /^(\+254|254|0)(7|1)\d{8}$/;
+  // Malawi phone number formats: +265XXXXXXXXX, 265XXXXXXXXX, 0XXXXXXXXX
+  const phoneRegex = /^(\+265|265|0)(99[0-9]|88[0-9]|77[0-9])[0-9]{6}$/;
   return phoneRegex.test(phone.replace(/\s+/g, ""));
 }
 
 /**
- * Format phone number for Kenya
+ * Format phone number for Malawi
  */
 export function formatPhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\s+/g, "");
 
-  if (cleaned.startsWith("+254")) {
+  if (cleaned.startsWith("+265")) {
     return cleaned;
-  } else if (cleaned.startsWith("254")) {
+  } else if (cleaned.startsWith("265")) {
     return `+${cleaned}`;
   } else if (cleaned.startsWith("0")) {
-    return `+254${cleaned.substring(1)}`;
+    return `+265${cleaned.substring(1)}`;
   }
 
   return phone; // Return original if format not recognized
@@ -310,28 +310,50 @@ export function getRelativeTime(date: Date | string): string {
 }
 
 /**
+ * Get order status color classes
+ */
+export function getOrderStatusColor(status: string): string {
+  switch (status) {
+    case "delivered":
+    case "completed":
+      return "bg-green-100 text-green-800";
+    case "processing":
+    case "confirmed":
+      return "bg-blue-100 text-blue-800";
+    case "pending":
+      return "bg-yellow-100 text-yellow-800";
+    case "cancelled":
+    case "failed":
+      return "bg-red-100 text-red-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+}
+
+/**
  * Format date for display
  */
-export function formatDate(
-  date: Date | string,
-  options?: Intl.DateTimeFormatOptions
-): string {
+export function formatDate(date: string | Date): string {
   const targetDate = typeof date === "string" ? new Date(date) : date;
-
-  const defaultOptions: Intl.DateTimeFormatOptions = {
+  return targetDate.toLocaleDateString("en-MW", {
     year: "numeric",
     month: "long",
     day: "numeric",
-  };
+  });
+}
 
-  try {
-    return new Intl.DateTimeFormat("en-KE", {
-      ...defaultOptions,
-      ...options,
-    }).format(targetDate);
-  } catch {
-    return targetDate.toLocaleDateString();
-  }
+/**
+ * Format date and time for display
+ */
+export function formatDateTime(date: string | Date): string {
+  const targetDate = typeof date === "string" ? new Date(date) : date;
+  return targetDate.toLocaleString("en-MW", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 /**
