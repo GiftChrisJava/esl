@@ -91,60 +91,89 @@ export interface LandingSlide {
 }
 
 // ===============================================
-// CART & ORDER TYPES (Commented out as auth disabled)
+// CART & ORDER TYPES
 // ===============================================
 
-// export interface CartItem {
-//   id: number;
-//   product: Product;
-//   quantity: number;
-//   price: number;
-// }
+export interface CartItem {
+  id: string;
+  productId: string;
+  quantity: number;
+  price: number;
+}
 
-// export interface Order {
-//   id: string;
-//   order_number: string;
-//   customer_id?: string | null;
-//   customer_email: string;
-//   customer_phone?: string | null;
-//   customer_name?: string | null;
-//   items: CartItem[];
-//   subtotal: number;
-//   tax_amount: number;
-//   shipping_cost: number;
-//   total_amount: number;
-//   payment_status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
-//   status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'failed';
-//   shipping_address: any;
-//   notes?: string | null;
-//   payment_reference?: string | null;
-//   created_at: string;
-//   updated_at: string;
-// }
+export interface Order {
+  id: string;
+  order_number: string;
+  customer_id?: string | null;
+  customer_email: string;
+  customer_phone?: string | null;
+  customer_name?: string | null;
+  items: OrderItem[];
+  subtotal: number;
+  tax_amount: number;
+  shipping_cost: number;
+  total_amount: number;
+  payment_status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'failed';
+  shipping_address: Address;
+  notes?: string | null;
+  payment_reference?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productImage: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface Address {
+  fullName: string;
+  phoneNumber: string;
+  district: string;
+  area: string;
+  landmarks: string;
+}
 
 // ===============================================
-// USER & AUTH TYPES (Commented out as auth disabled)
+// USER & AUTH TYPES
 // ===============================================
 
-// export interface User {
-//   id: string;
-//   email: string;
-//   full_name?: string | null;
-//   phone_number?: string | null;
-//   company_name?: string | null;
-//   address?: string | null;
-//   avatar_url?: string | null;
-//   role: 'customer' | 'admin' | 'super_admin';
-//   is_active: boolean;
-//   created_at: string;
-//   updated_at: string;
-// }
+export interface User {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  phone_number?: string | null;
+  district?: string | null;
+  area?: string | null;
+  landmarks?: string | null;
+  avatar_url?: string | null;
+  role: 'customer' | 'system_admin' | 'sales_admin' | 'web_admin' | 'helpdesk';
+  is_active: boolean;
+  email_verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
-// export interface AuthState {
-//   user: User | null;
-//   isAuthenticated: boolean;
-//   isLoading: boolean;
-// }
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
+// Malawi districts
+export const MALAWI_DISTRICTS = [
+  'Balaka', 'Blantyre', 'Chikwawa', 'Chiradzulu', 'Chitipa', 'Dedza',
+  'Dowa', 'Karonga', 'Kasungu', 'Likoma', 'Lilongwe', 'Machinga',
+  'Mangochi', 'Mchinji', 'Mwanza', 'Mzimba', 'Neno', 'Nkhata Bay',
+  'Nkhotakota', 'Nsanje', 'Ntcheu', 'Ntchisi', 'Phalombe', 'Rumphi',
+  'Salima', 'Thyolo', 'Zomba'
+];
 
 // ===============================================
 // FORM TYPES

@@ -1,9 +1,9 @@
 "use client";
 
+import { useAuth } from "@/contexts/AuthContext";
 import { COMPANY_INFO } from "@/lib/config";
-import { orderService } from "@/lib/orderService";
-import type { Order } from "@/lib/types";
-import { formatDate, formatPrice } from "@/lib/utils";
+import { ordersService } from "@/lib/supabase/orders";
+import { formatPrice } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -23,8 +23,9 @@ import React, { useEffect, useState } from "react";
 
 const CheckoutSuccessPage: React.FC = () => {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const orderId = searchParams.get("order");
-  const [order, setOrder] = useState<Order | null>(null);
+  const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
@@ -35,31 +36,51 @@ const CheckoutSuccessPage: React.FC = () => {
       return;
     }
 
-    // Get order details
     const loadOrder = async () => {
-      const orderDetails = await orderService.getOrderById(orderId);
-      if (orderDetails) {
-        setOrder(orderDetails);
+      const result = await ordersService.getOrderById(orderId);
+      if (result.success && result.data) {
+        setOrder(result.data);
       } else {
         setError("Order not found");
       }
+      setLoading(false);
     };
-    loadOrder();
 
-    setLoading(false);
+    loadOrder();
   }, [orderId]);
 
-  const handleDownloadReceipt = async () => {
-    if (order) {
-      const receipt = await orderService.generateOrderReceipt(order.id);
-      const blob = new Blob([receipt], { type: "text/plain" });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `receipt-${order.id}.txt`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    }
+  const handleDownloadReceipt = () => {
+    if (!order) return;
+
+    const receiptContent = `
+ENERGY SOLUTIONS LIMITED
+Receipt for Order #${order.order_number}
+
+Order Date: ${new Date(order.created_at).toLocaleDateString()}
+Customer: ${order.customer_name}
+Email: ${order.customer_email}
+Phone: ${order.customer_phone}
+
+ITEMS:
+${order.items?.map((item: any) => 
+  `${item.product_name} x${item.quantity} - ${formatPrice(item.total_price)}`
+).join('\n')}
+
+TOTAL: ${formatPrice(order.total_amount)}
+
+Thank you for your business!
+${COMPANY_INFO.name}
+${COMPANY_INFO.phone}
+${COMPANY_INFO.email}
+    `;
+
+    const blob = new Blob([receiptContent], { type: "text/plain" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `receipt-${order.order_number}.txt`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   if (loading) {
@@ -95,10 +116,6 @@ const CheckoutSuccessPage: React.FC = () => {
       </div>
     );
   }
-
-  // Calculate estimated delivery date (5-7 business days)
-  const estimatedDelivery = new Date(order.orderDate);
-  estimatedDelivery.setDate(estimatedDelivery.getDate() + 7);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -152,26 +169,22 @@ const CheckoutSuccessPage: React.FC = () => {
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Order Number:</span>
-                  <span className="font-semibold">
-                    #{order.id.substring(0, 8)}
-                  </span>
+                  <span className="font-semibold">{order.order_number}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Order Date:</span>
-                  <span>{formatDate(order.orderDate)}</span>
+                  <span>{new Date(order.created_at).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Payment Status:</span>
                   <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                    {order.paymentStatus === "completed"
-                      ? "Paid"
-                      : "Processing"}
+                    {order.payment_status === "completed" ? "Paid" : "Processing"}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Total Amount:</span>
                   <span className="font-bold text-lg">
-                    {formatPrice(order.totalAmount)}
+                    {formatPrice(order.total_amount)}
                   </span>
                 </div>
               </div>
@@ -181,28 +194,27 @@ const CheckoutSuccessPage: React.FC = () => {
                   Items Ordered
                 </h3>
                 <div className="space-y-4">
-                  {order.items.map((item, index) => (
+                  {order.items?.map((item: any, index: number) => (
                     <div key={index} className="flex items-center space-x-4">
                       <div className="relative w-16 h-16 flex-shrink-0">
                         <Image
-                          src={item.productImage}
-                          alt={item.productName}
+                          src="/image 1.jpg"
+                          alt={item.product_name}
                           fill
                           className="object-cover rounded-lg"
                         />
                       </div>
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">
-                          {item.productName}
+                          {item.product_name}
                         </h4>
                         <p className="text-sm text-gray-600">
-                          Quantity: {item.quantity} ×{" "}
-                          {formatPrice(item.unitPrice)}
+                          Quantity: {item.quantity} × {formatPrice(item.unit_price)}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">
-                          {formatPrice(item.totalPrice)}
+                          {formatPrice(item.total_price)}
                         </p>
                       </div>
                     </div>
@@ -227,13 +239,13 @@ const CheckoutSuccessPage: React.FC = () => {
                     Delivery Address
                   </h3>
                   <div className="text-gray-700">
-                    <p>{order.shippingAddress.fullName}</p>
-                    <p>{order.shippingAddress.area}</p>
-                    <p>{order.shippingAddress.district}</p>
-                    <p>Phone: {order.shippingAddress.phoneNumber}</p>
-                    {order.shippingAddress.landmarks && (
+                    <p>{order.shipping_address?.fullName}</p>
+                    <p>{order.shipping_address?.area}</p>
+                    <p>{order.shipping_address?.district}</p>
+                    <p>Phone: {order.shipping_address?.phoneNumber}</p>
+                    {order.shipping_address?.landmarks && (
                       <p className="text-sm text-gray-600 mt-1">
-                        Landmarks: {order.shippingAddress.landmarks}
+                        Landmarks: {order.shipping_address.landmarks}
                       </p>
                     )}
                   </div>
@@ -258,7 +270,7 @@ const CheckoutSuccessPage: React.FC = () => {
                     <div className="flex items-center space-x-3">
                       <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
                       <span className="text-sm text-gray-700">
-                        Estimated delivery by {formatDate(estimatedDelivery)}
+                        Estimated delivery in 5-7 days
                       </span>
                     </div>
                   </div>
@@ -288,7 +300,7 @@ const CheckoutSuccessPage: React.FC = () => {
                       Track Your Order
                     </h4>
                     <p className="text-sm text-gray-600">
-                      Reference: ESL-{order.id.substring(0, 8).toUpperCase()}
+                      Reference: {order.order_number}
                     </p>
                   </div>
                 </div>
@@ -301,7 +313,7 @@ const CheckoutSuccessPage: React.FC = () => {
                       Free Delivery
                     </h4>
                     <p className="text-sm text-gray-600">
-                      Estimated: {formatDate(estimatedDelivery)}
+                      Estimated: 5-7 business days
                     </p>
                   </div>
                 </div>
