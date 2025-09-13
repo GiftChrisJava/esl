@@ -75,8 +75,9 @@ The project includes pre-built migration files. Run them in this order:
 3. Add **Redirect URLs**:
    - `http://localhost:3000/**`
    - `https://yourdomain.com/**` (for production)
-4. **Disable email confirmation** for easier testing (optional)
+4. **Enable email confirmation** - this is required for the 6-digit verification system
 5. Enable **Email** authentication
+6. **Important**: The system uses custom 6-digit verification codes for customers
 
 ## Step 6: Create Your First Admin User
 
@@ -116,6 +117,11 @@ After creating your user account, assign the system admin role:
 UPDATE profiles 
 SET role = 'system_admin' 
 WHERE email = 'your-email@example.com';
+
+-- Also mark admin as email verified (admins don't need verification)
+UPDATE profiles 
+SET email_verified = true 
+WHERE email = 'your-email@example.com';
 ```
 
 ## Step 7: Test the System
@@ -124,9 +130,11 @@ WHERE email = 'your-email@example.com';
 1. Go to `/products`
 2. Click on any product
 3. Click "Buy Now"
-4. Register/login as a customer
-5. Complete the checkout process
-6. Check your dashboard at `/dashboard`
+4. Register as a customer (you'll need to verify email with 6-digit code)
+5. Check console for verification code (in development)
+6. Enter the 6-digit code to verify your email
+7. Complete the checkout process
+8. Check your dashboard at `/dashboard`
 
 ### Test Admin Access
 1. Login with your admin account
@@ -138,31 +146,25 @@ WHERE email = 'your-email@example.com';
 As a system admin, you can create other admin users:
 
 1. Go to `/admin/system-admin`
-2. Use the "Quick Actions" to create:
+2. Click "Create Admin User" in Quick Actions
+3. Fill in the admin details and select role:
    - **Sales Admin**: Manages products, orders, customers
    - **Web Admin**: Manages content, services, projects
    - **Helpdesk**: Manages customer communications
+4. Admin users are automatically email-verified (no verification needed)
 
-Or manually in SQL:
-```sql
--- Create sales admin
-INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at)
-VALUES (gen_random_uuid(), 'sales@esl.mw', crypt('password123', gen_salt('bf')), now(), now(), now());
+## Email Verification System
 
-UPDATE profiles SET role = 'sales_admin' WHERE email = 'sales@esl.mw';
+### For Customers
+- **6-Digit Verification**: Customers receive a 6-digit code via email
+- **Code Expiry**: Codes expire after 10 minutes
+- **Rate Limiting**: Maximum 3 attempts per code, 60-second resend cooldown
+- **Required for Shopping**: Must verify email before making purchases
 
--- Create web admin
-INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at)
-VALUES (gen_random_uuid(), 'web@esl.mw', crypt('password123', gen_salt('bf')), now(), now(), now());
-
-UPDATE profiles SET role = 'web_admin' WHERE email = 'web@esl.mw';
-
--- Create helpdesk
-INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at)
-VALUES (gen_random_uuid(), 'help@esl.mw', crypt('password123', gen_salt('bf')), now(), now(), now());
-
-UPDATE profiles SET role = 'helpdesk' WHERE email = 'help@esl.mw';
-```
+### For Admins
+- **Auto-Verified**: Admin accounts are automatically email-verified
+- **No Verification Needed**: Admins can access their dashboards immediately
+- **Created by System Admin**: Only system admins can create other admin accounts
 
 ## Admin Role Permissions
 
@@ -211,10 +213,17 @@ NEXT_PUBLIC_APP_URL=https://yourdomain.com
 #### "User not found" after registration
 - Check if the `handle_new_user()` trigger is working
 - Verify the user appears in both `auth.users` and `profiles` tables
+- For customers, ensure they complete email verification
 
 #### "Access denied" for admin users
 - Verify the user's role in the `profiles` table
+- Ensure admin users have `email_verified = true`
 - Check RLS policies are correctly applied
+
+#### Email verification not working
+- Check console logs for verification codes (in development)
+- Verify email service integration (in production)
+- Ensure verification codes haven't expired (10-minute limit)
 
 #### Products not loading
 - Ensure sample products were inserted during schema setup
@@ -238,6 +247,7 @@ NEXT_PUBLIC_APP_URL=https://yourdomain.com
 1. **Never commit `.env.local`** to version control
 2. **Keep service role key secret** - it has full database access
 3. **Use strong passwords** for admin accounts
+4. **Email Verification**: Customers must verify emails, admins are auto-verified
 4. **Enable 2FA** on your Supabase account
 5. **Regular backups** - Supabase provides automatic backups
 6. **Monitor access logs** in the Supabase dashboard
@@ -248,8 +258,14 @@ After setup is complete:
 
 1. **Add Products**: Use the sales admin panel to add your product catalog
 2. **Configure PayChangu**: Set up payment processing for live transactions
+3. **Email Service**: Integrate with SendGrid/Mailgun for production email verification
 3. **Customize Content**: Use web admin to update services, projects, and team info
 4. **Test Thoroughly**: Test all user flows before going live
 5. **Set Up Monitoring**: Configure error tracking and performance monitoring
 
-Your e-commerce platform is now ready with full authentication, role-based admin access, and real-time updates!
+Your e-commerce platform is now ready with:
+- ✅ 6-digit email verification for customers
+- ✅ Auto-verified admin accounts
+- ✅ Role-based admin access
+- ✅ Complete e-commerce functionality
+- ✅ Real-time updates and secure payments
